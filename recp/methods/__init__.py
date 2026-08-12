@@ -1,12 +1,22 @@
+from .bfcl import boundary_uncertainty_weights, dynamic_boundary_mask, reliable_anchor_pools
 from .contracts import BFCL, TEER, UGT, RestrictedComponentError
-from .public_primitives import (
+from .prompts import recp_prompts
+from .teacher_student import update_ema
+from .teer import (
+    dirichlet_kl_to_uniform,
     dirichlet_statistics,
-    dynamic_boundary_mask,
-    jensen_shannon_divergence,
+    evidential_nll,
     target_exempted_alpha,
+    teer_supervised_loss,
+)
+from .ugt import (
+    aggregate_text_prototypes,
+    jensen_shannon_divergence,
+    rectify_evidence,
+    reliability_weighted_consistency,
+    text_pseudo_alpha,
     uncertainty_gate,
 )
-from .teacher_student import update_ema
 
 __all__ = [
     "TEER",
@@ -19,4 +29,14 @@ __all__ = [
     "jensen_shannon_divergence",
     "uncertainty_gate",
     "dynamic_boundary_mask",
+    "dirichlet_kl_to_uniform",
+    "evidential_nll",
+    "teer_supervised_loss",
+    "recp_prompts",
+    "aggregate_text_prototypes",
+    "text_pseudo_alpha",
+    "rectify_evidence",
+    "reliability_weighted_consistency",
+    "reliable_anchor_pools",
+    "boundary_uncertainty_weights",
 ]

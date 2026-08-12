@@ -26,7 +26,7 @@ class ConvBlock(nn.Module):
 
 
 class UNet2D(nn.Module):
-    """Return evidence logits and a feature map through the public model API."""
+    """Return non-negative evidence and a feature map through the public model API."""
 
     def __init__(self, in_channels: int = 1, num_classes: int = 2, base: int = 16) -> None:
         super().__init__()

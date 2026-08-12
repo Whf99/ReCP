@@ -1,4 +1,4 @@
-from .schedule import gaussian_rampup
 from .orchestrator import LossWeights, recp_step
+from .schedule import gaussian_rampup, recp_loss_weights
 
-__all__ = ["gaussian_rampup", "LossWeights", "recp_step"]
+__all__ = ["gaussian_rampup", "recp_loss_weights", "LossWeights", "recp_step"]

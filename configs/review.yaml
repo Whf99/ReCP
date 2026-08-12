@@ -5,6 +5,7 @@ data:
   image_size: [256, 256]
   in_channels: 1
   num_classes: 2
+  class_names: [non_tumor, tumor]
   labeled_ratio: 0.10
 model:
   backbone: unet2d
@@ -18,6 +19,9 @@ training:
   weight_decay: 0.0001
   ema_decay: 0.99
 method:
+  text_encoder: clip_vit_b32
+  freeze_text_encoder: true
+  prompt_pairs: 3
   lambda_ugt_max: 1.0
   lambda_bfcl_max: 0.3
   gate_gamma: 0.5

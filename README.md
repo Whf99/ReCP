@@ -4,7 +4,7 @@ This repository is a **review-stage partial release** accompanying the manuscrip
 "Reliability-Calibrated Pseudo-Supervision for Nasopharyngeal Carcinoma Segmentation."
 
 ReCP formulates semi-supervised NPC segmentation as reliability-calibrated
-pseudo-supervision in an EMA teacher--student framework. The paper contains three
+pseudo-supervision in an EMA teacher--student framework. It contains three
 components:
 
 1. Target-Exempted Evidential Regularization (TEER)
@@ -13,51 +13,85 @@ components:
 
 ## Scope of this release
 
-The public review package exposes the experiment configuration, a compact 2D
-U-Net API model, EMA update, training orchestration, data contracts, and the exact
-input/output contracts of the three method components. It additionally includes a
-limited set of equation-level primitives: TEER Dirichlet statistics and target
-exemption, the UGT Jensen--Shannon uncertainty gate, and the BFCL dynamic boundary
-mask. Complete objectives, evidence fusion, anchor mining, and hard-pair selection
-remain withheld. This package therefore supports structural inspection but **does
-not claim full result reproduction**.
+The review package exposes a compact 2D U-Net API model, EMA update, training
+orchestration, data contracts, manuscript-aligned configuration, and inspectable
+implementations of the principal equations:
 
-The compact U-Net included here validates tensor and integration contracts. It is
-not the parameter-matched experimental model used for the parameter count, FLOPs,
-latency, or accuracy reported in the manuscript.
+- **TEER:** Dirichlet evidence statistics, one-hot evidential NLL,
+  target-exempted KL-to-uniform, soft Dice, and their supervised composition.
+- **UGT:** the six fixed CT prompts, prototype centroid construction, text
+  pseudo-evidence, Jensen--Shannon gating, evidence rectification, and
+  reliability-weighted valid-region consistency.
+- **BFCL:** dynamic pseudo-boundaries, reliability-first boundary/interior
+  candidate pools, and boundary--uncertainty hardness weights.
+
+The visual-to-text projection design, weak/strong augmentation and alignment
+implementation, BFCL sampling quota, local positive/negative pairing, hard-negative
+ranking, and final weighted InfoNCE implementation remain withheld during review.
+The package therefore supports method inspection but **does not claim full result
+reproduction**.
+
+The compact U-Net validates tensor and integration contracts. It is not the
+parameter-matched experimental model used for the parameter count, FLOPs, latency,
+or accuracy reported in the manuscript.
 
 No clinical data, patient identifiers, private paths, pretrained weights,
-checkpoints, or experiment logs are included. A complete implementation is
-planned for release after acceptance/publication.
+checkpoints, split manifests, predictions, or experiment logs are included. A
+complete implementation is planned for release after acceptance/publication.
 
-## Quick structural check
+## Repository structure
+
+```text
+configs/review.yaml              manuscript-aligned review configuration
+recp/models/unet2d.py            compact evidential U-Net API model
+recp/methods/teer.py             public TEER equations
+recp/methods/ugt.py              public UGT equations
+recp/methods/prompts.py          fixed minimalist CT anchors
+recp/methods/bfcl.py             public BFCL candidate construction
+recp/methods/teacher_student.py  EMA teacher update
+recp/training/                   ramp-up and high-level ReCP orchestration
+recp/evaluation/metrics.py       dataset-independent region metrics
+examples/inspect_components.py   synthetic equation-level example
+tests/                           behavioral tests for disclosed components
+```
+
+## Installation
+
+Python 3.10 or newer is recommended.
+
+```bash
+python -m venv .venv
+python -m pip install -r requirements.txt
+```
+
+## Structural checks
 
 ```bash
 python train.py --config configs/review.yaml --dry-run
 python evaluate.py --dry-run
+python -m examples.inspect_components
 python -m unittest discover -s tests
 ```
 
-These commands validate configuration and model/data contracts only. Training the
-full ReCP method requires the restricted components and an institution-approved,
-de-identified dataset adapter.
+These commands use synthetic tensors and do not access clinical data. Starting a
+full training run intentionally raises a restricted-component notice.
 
 ## Expected data contract
 
 Each training batch is a mapping. Labeled batches contain `image`, `mask`, and
-optionally `valid_mask`; unlabeled batches contain weak/strong views, alignment
-metadata, and their geometric validity mask. The public orchestration explicitly
-aligns Teacher outputs into the Student view before UGT. Images are single-channel 2D CT slices resized to
-256 x 256. Dataset-specific preprocessing and patient split files are not part of
-this review release.
+optionally `valid_mask`. Unlabeled batches contain `weak_image`, `strong_image`,
+`alignment`, and `valid_mask`. Teacher outputs from the weak view must be aligned
+to the Student strong view before UGT. Images are single-channel 2D CT slices
+resized to 256 x 256. The class order is `non_tumor`, then `tumor`.
 
-See `recp/methods/public_primitives.py`, `docs/PAPER_CODE_MAPPING.md`, and
-`docs/PAPER_CONSISTENCY_CHECKLIST.md` before use. The detailed inclusion and
-exclusion policy is in `docs/RELEASE_SCOPE.md`.
+Dataset-specific preprocessing, augmentation parameters, patient-level split
+files, and cross-view alignment code are not part of this review release.
 
-## Acknowledgement
+The public/restricted boundary is stated above and enforced by explicit restricted
+interfaces in `recp/methods/contracts.py`.
 
-The research code was developed with reference to common semi-supervised medical
-segmentation practice and the SSL4MIS ecosystem. No SSL4MIS source file is copied
-into this partial release. Users of the complete research pipeline should cite the
-relevant original methods and datasets described in the manuscript.
+## Source provenance
+
+The files in this repository were independently written from the equations and
+algorithm description in the ReCP manuscript. No source file from an external
+segmentation repository is distributed in this package.

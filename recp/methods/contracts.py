@@ -29,7 +29,7 @@ class UGT(Protocol):
 
     def __call__(
         self,
-        teacher_evidence: torch.Tensor,
+        teacher_alpha: torch.Tensor,
         teacher_features: torch.Tensor,
         text_prototypes: torch.Tensor,
         valid_mask: torch.Tensor,
@@ -37,7 +37,7 @@ class UGT(Protocol):
 
     def consistency_loss(
         self,
-        student_evidence: torch.Tensor,
+        student_alpha: torch.Tensor,
         target: UGTOutput,
     ) -> torch.Tensor: ...
 
@@ -51,5 +51,5 @@ class BFCL(Protocol):
 def restricted_component(name: str) -> None:
     raise RestrictedComponentError(
         f"{name} is intentionally excluded from the review-stage partial release. "
-        "See docs/RELEASE_SCOPE.md."
+        "See the disclosure boundary in README.md."
     )

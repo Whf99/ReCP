@@ -38,14 +38,14 @@ def recp_step(
             unlabeled["valid_mask"],
         )
         target = ugt(
-            aligned_teacher["evidence"],
+            aligned_teacher["evidence"] + 1.0,
             aligned_teacher["features"],
             text_prototypes,
             valid_mask,
         )
 
     # The restricted UGT implementation supplies its reliability-weighted loss.
-    consistency = ugt.consistency_loss(student_output["evidence"], target)
+    consistency = ugt.consistency_loss(student_output["evidence"] + 1.0, target)
     contrastive = bfcl(student_output["features"], target)
     total = supervised["loss"] + weights.ugt * consistency + weights.bfcl * contrastive
     return {"loss": total, "supervised": supervised["loss"], "ugt": consistency, "bfcl": contrastive}
