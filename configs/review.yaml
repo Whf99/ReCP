@@ -1,0 +1,27 @@
+experiment:
+  name: recp_review
+  seed: 1337
+data:
+  image_size: [256, 256]
+  in_channels: 1
+  num_classes: 2
+  labeled_ratio: 0.10
+model:
+  backbone: unet2d
+  base_channels: 16
+training:
+  epochs: 300
+  warmup_epochs: 15
+  batch_size: 32
+  optimizer: adamw
+  learning_rate: 0.0002
+  weight_decay: 0.0001
+  ema_decay: 0.99
+method:
+  lambda_ugt_max: 1.0
+  lambda_bfcl_max: 0.3
+  gate_gamma: 0.5
+  text_temperature: 0.07
+  confidence_threshold: 0.7
+  restricted_components: true
+
