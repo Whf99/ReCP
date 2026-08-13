@@ -1,4 +1,4 @@
-"""Public contracts for method-specific components withheld during review."""
+"""Interfaces connecting ReCP method components to the training engine."""
 
 from dataclasses import dataclass
 from typing import Protocol
@@ -6,13 +6,13 @@ from typing import Protocol
 import torch
 
 
-class RestrictedComponentError(RuntimeError):
-    pass
-
-
 @dataclass(frozen=True)
 class UGTOutput:
+    """Aligned UGT target and the visual quantities used by BFCL."""
+
     posterior_alpha: torch.Tensor
+    posterior_probability: torch.Tensor
+    image_probability: torch.Tensor
     visual_uncertainty: torch.Tensor
     reliability: torch.Tensor
     valid_mask: torch.Tensor
@@ -21,7 +21,12 @@ class UGTOutput:
 class TEER(Protocol):
     """Paper Sec. 3.2: evidence/labels -> supervised evidential loss and uncertainty."""
 
-    def __call__(self, evidence: torch.Tensor, labels: torch.Tensor) -> dict[str, torch.Tensor]: ...
+    def __call__(
+        self,
+        evidence: torch.Tensor,
+        labels: torch.Tensor,
+        valid_mask: torch.Tensor | None = None,
+    ) -> dict[str, torch.Tensor]: ...
 
 
 class UGT(Protocol):
@@ -33,6 +38,8 @@ class UGT(Protocol):
         teacher_features: torch.Tensor,
         text_prototypes: torch.Tensor,
         valid_mask: torch.Tensor,
+        *,
+        detach_target: bool = True,
     ) -> UGTOutput: ...
 
     def consistency_loss(
@@ -45,11 +52,9 @@ class UGT(Protocol):
 class BFCL(Protocol):
     """Paper Sec. 3.4: reliable pseudo-targets/features -> boundary-focused contrastive loss."""
 
-    def __call__(self, features: torch.Tensor, target: UGTOutput) -> torch.Tensor: ...
-
-
-def restricted_component(name: str) -> None:
-    raise RestrictedComponentError(
-        f"{name} is intentionally excluded from the review-stage partial release. "
-        "See the disclosure boundary in README.md."
-    )
+    def __call__(
+        self,
+        features: torch.Tensor,
+        target: UGTOutput,
+        valid_mask: torch.Tensor,
+    ) -> torch.Tensor: ...

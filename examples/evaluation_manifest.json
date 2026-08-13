@@ -1,0 +1,15 @@
+{
+  "cases": [
+    {
+      "case_id": "case_001",
+      "prediction": "predictions/case_001.nii.gz",
+      "target": "targets/case_001.nii.gz"
+    },
+    {
+      "case_id": "case_002",
+      "prediction": "predictions/case_002.npy",
+      "target": "targets/case_002.npy",
+      "spacing_mm": [3.0, 1.0, 1.0]
+    }
+  ]
+}

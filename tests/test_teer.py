@@ -11,7 +11,7 @@ from recp.methods.teer import (
 
 
 class TEERTests(unittest.TestCase):
-    def test_dirichlet_statistics_follow_manuscript(self) -> None:
+    def test_dirichlet_statistics_follow_definition(self) -> None:
         evidence = torch.tensor([[[[2.0]], [[0.0]]]])
         alpha, probability, uncertainty = dirichlet_statistics(evidence)
         self.assertTrue(torch.equal(alpha, torch.tensor([[[[3.0]], [[1.0]]]])))

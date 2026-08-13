@@ -1,15 +1,19 @@
 experiment:
-  name: recp_review
-  seed: 1337
+  name: recp
+  seed: 0
+  deterministic: true
+
 data:
   image_size: [256, 256]
   in_channels: 1
   num_classes: 2
   class_names: [non_tumor, tumor]
   labeled_ratio: 0.10
+
 model:
   backbone: unet2d
   base_channels: 16
+
 training:
   epochs: 300
   warmup_epochs: 15
@@ -18,6 +22,11 @@ training:
   learning_rate: 0.0002
   weight_decay: 0.0001
   ema_decay: 0.99
+  validation_model: teacher
+  gradient_clip_norm: null
+  checkpoint_interval: 1
+  output_dir: runs/recp
+
 method:
   text_encoder: clip_vit_b32
   freeze_text_encoder: true
@@ -27,5 +36,3 @@ method:
   gate_gamma: 0.5
   text_temperature: 0.07
   confidence_threshold: 0.7
-  restricted_components: true
-

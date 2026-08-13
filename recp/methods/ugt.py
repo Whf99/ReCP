@@ -1,16 +1,18 @@
-"""Public mathematical path of Uncertainty-Gated Text Prior Injection."""
+"""Mathematical operators for Uncertainty-Gated Text Prior Injection."""
 
 from typing import Optional
 
 import torch
 from torch.nn import functional as F
 
+from .contracts import UGTOutput
+
 
 def aggregate_text_prototypes(prompt_embeddings: torch.Tensor) -> torch.Tensor:
     """Normalize prompts, average the three anchors per class, then normalize again.
 
     Expected shape is K x M x D, where K is the class count and M=3 in ReCP.
-    The frozen text encoder itself and pretrained weights are not distributed.
+    Text embeddings are computed once with the frozen text encoder.
     """
     if prompt_embeddings.ndim != 3 or prompt_embeddings.shape[1] != 3:
         raise ValueError("prompt_embeddings must have shape K x 3 x D")
@@ -28,8 +30,16 @@ def text_pseudo_alpha(
         raise ValueError("expected projected features NDHW and prototypes KD")
     if projected_features.shape[1] != text_prototypes.shape[1]:
         raise ValueError("feature and prototype embedding dimensions must match")
+    if text_scale <= 0:
+        raise ValueError("text_scale must be positive")
     features = F.normalize(projected_features, dim=1)
-    prototypes = F.normalize(text_prototypes, dim=1)
+    prototypes = F.normalize(
+        text_prototypes.to(
+            device=projected_features.device,
+            dtype=projected_features.dtype,
+        ),
+        dim=1,
+    )
     similarity = torch.einsum("ndhw,kd->nkhw", features, prototypes)
     alpha_text = F.softplus(float(text_scale) * similarity) + 1.0
     return alpha_text, similarity
@@ -62,19 +72,29 @@ def uncertainty_gate(
     if gamma < 0:
         raise ValueError("gamma must be non-negative")
     return visual_uncertainty.clamp(0.0, 1.0) * torch.exp(
-        -float(gamma) * cross_modal_divergence
+        -float(gamma) * cross_modal_divergence.clamp_min(0.0)
     )
 
 
 def rectify_evidence(
     alpha_image: torch.Tensor,
     alpha_text: torch.Tensor,
-    visual_uncertainty: torch.Tensor,
     gamma: float,
 ) -> dict[str, torch.Tensor]:
     """Compute the UGT posterior alpha_img+omega*(alpha_text-1)."""
-    image_probability = alpha_image / alpha_image.sum(dim=1, keepdim=True).clamp_min(1e-8)
-    text_probability = alpha_text / alpha_text.sum(dim=1, keepdim=True).clamp_min(1e-8)
+    if alpha_image.ndim != 4 or alpha_image.shape != alpha_text.shape:
+        raise ValueError(
+            "alpha_image and alpha_text must have identical N x K x H x W shapes"
+        )
+    if not torch.isfinite(alpha_image).all() or not torch.isfinite(alpha_text).all():
+        raise ValueError("Dirichlet parameters must be finite")
+    if torch.any(alpha_image < 1.0) or torch.any(alpha_text < 1.0):
+        raise ValueError("Dirichlet parameters must be at least one")
+    image_strength = alpha_image.sum(dim=1, keepdim=True).clamp_min(1e-8)
+    text_strength = alpha_text.sum(dim=1, keepdim=True).clamp_min(1e-8)
+    image_probability = alpha_image / image_strength
+    text_probability = alpha_text / text_strength
+    visual_uncertainty = float(alpha_image.shape[1]) / image_strength
     divergence = jensen_shannon_divergence(image_probability, text_probability)
     gate = uncertainty_gate(visual_uncertainty, divergence, gamma)
     posterior_alpha = alpha_image + gate * (alpha_text - 1.0)
@@ -84,10 +104,45 @@ def rectify_evidence(
     return {
         "posterior_alpha": posterior_alpha,
         "posterior_probability": posterior_probability,
+        "image_probability": image_probability,
+        "text_probability": text_probability,
         "divergence": divergence,
         "gate": gate,
+        "visual_uncertainty": visual_uncertainty,
         "reliability": 1.0 - visual_uncertainty.clamp(0.0, 1.0),
     }
+
+
+def ugt_target_from_projected_features(
+    alpha_image: torch.Tensor,
+    projected_features: torch.Tensor,
+    text_prototypes: torch.Tensor,
+    valid_mask: torch.Tensor,
+    gamma: float = 0.5,
+    text_scale: float = 0.07,
+    *,
+    detach_target: bool = True,
+) -> UGTOutput:
+    """Construct the aligned UGT pseudo-target from projected visual features."""
+    alpha_text, _ = text_pseudo_alpha(
+        projected_features,
+        text_prototypes,
+        text_scale=text_scale,
+    )
+    rectified = rectify_evidence(alpha_image, alpha_text, gamma=gamma)
+    values = {
+        name: rectified[name]
+        for name in (
+            "posterior_alpha",
+            "posterior_probability",
+            "image_probability",
+            "visual_uncertainty",
+            "reliability",
+        )
+    }
+    if detach_target:
+        values = {name: value.detach() for name, value in values.items()}
+    return UGTOutput(valid_mask=valid_mask.bool(), **values)
 
 
 def reliability_weighted_consistency(
@@ -98,6 +153,15 @@ def reliability_weighted_consistency(
     eps: float = 1e-8,
 ) -> torch.Tensor:
     """Reliability-weighted cross-entropy on geometrically valid pixels."""
+    if student_alpha.shape != target_probability.shape:
+        raise ValueError("student alpha and target probability shapes must match")
+    if reliability.ndim != student_alpha.ndim or reliability.shape[1] != 1:
+        raise ValueError("reliability must have shape N x 1 x H x W")
+    if (
+        reliability.shape[0] != student_alpha.shape[0]
+        or reliability.shape[2:] != student_alpha.shape[2:]
+    ):
+        raise ValueError("reliability batch and spatial dimensions must match")
     student_probability = student_alpha / student_alpha.sum(
         dim=1, keepdim=True
     ).clamp_min(eps)

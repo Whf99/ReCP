@@ -8,6 +8,7 @@ from recp.methods.ugt import (
     jensen_shannon_divergence,
     rectify_evidence,
     reliability_weighted_consistency,
+    ugt_target_from_projected_features,
     uncertainty_gate,
 )
 
@@ -36,8 +37,14 @@ class UGTTests(unittest.TestCase):
     def test_rectification_only_adds_nonnegative_text_evidence(self) -> None:
         alpha_image = torch.full((1, 2, 2, 2), 2.0)
         alpha_text = torch.full((1, 2, 2, 2), 1.5)
-        output = rectify_evidence(alpha_image, alpha_text, torch.full((1, 1, 2, 2), 0.5), 0.5)
+        output = rectify_evidence(alpha_image, alpha_text, gamma=0.5)
         self.assertTrue(torch.all(output["posterior_alpha"] >= alpha_image))
+        self.assertTrue(
+            torch.allclose(
+                output["visual_uncertainty"],
+                torch.full((1, 1, 2, 2), 0.5),
+            )
+        )
 
     def test_valid_mask_accepts_nhw(self) -> None:
         alpha = torch.full((2, 2, 3, 3), 2.0)
@@ -46,6 +53,19 @@ class UGTTests(unittest.TestCase):
         mask = torch.ones(2, 3, 3)
         loss = reliability_weighted_consistency(alpha, target, reliability, mask)
         self.assertTrue(torch.isfinite(loss))
+
+    def test_projected_features_build_a_detached_target(self) -> None:
+        alpha_image = torch.full((1, 2, 3, 3), 2.0)
+        features = torch.randn(1, 4, 3, 3, requires_grad=True)
+        prototypes = torch.nn.functional.normalize(torch.randn(2, 4), dim=1)
+        target = ugt_target_from_projected_features(
+            alpha_image,
+            features,
+            prototypes,
+            torch.ones(1, 1, 3, 3, dtype=torch.bool),
+        )
+        self.assertEqual(target.posterior_probability.shape, alpha_image.shape)
+        self.assertFalse(target.posterior_probability.requires_grad)
 
 
 if __name__ == "__main__":

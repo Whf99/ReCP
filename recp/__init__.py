@@ -1,4 +1,4 @@
-"""Review-stage public interfaces for ReCP."""
+"""Reliability-Calibrated Pseudo-Supervision (ReCP)."""
 
-__version__ = "0.2.0-review"
+__version__ = "0.3.0"
 

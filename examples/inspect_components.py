@@ -1,4 +1,4 @@
-"""Inspect the disclosed ReCP equations using synthetic tensors only."""
+"""Inspect ReCP equation-level operators with generated tensors."""
 
 import torch
 
@@ -15,14 +15,14 @@ from recp.methods import (
 def main() -> None:
     torch.manual_seed(7)
     evidence = torch.rand(1, 2, 8, 8)
-    alpha_image, probability_image, uncertainty = dirichlet_statistics(evidence)
+    alpha_image, probability_image, _ = dirichlet_statistics(evidence)
 
     prompt_embeddings = torch.randn(2, 3, 16)
     text_prototypes = aggregate_text_prototypes(prompt_embeddings)
     projected_features = torch.randn(1, 16, 8, 8)
     alpha_text, _ = text_pseudo_alpha(projected_features, text_prototypes)
 
-    rectified = rectify_evidence(alpha_image, alpha_text, uncertainty, gamma=0.5)
+    rectified = rectify_evidence(alpha_image, alpha_text, gamma=0.5)
     pseudo_labels = rectified["posterior_probability"].argmax(dim=1)
     boundary = dynamic_boundary_mask(pseudo_labels)
 

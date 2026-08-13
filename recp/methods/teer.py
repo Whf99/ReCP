@@ -1,4 +1,4 @@
-"""Public, equation-level implementation of TEER from the ReCP manuscript."""
+"""Equation-level implementation of Target-Exempted Evidential Regularization."""
 
 from typing import Optional
 
@@ -79,12 +79,20 @@ def dirichlet_kl_to_uniform(alpha: torch.Tensor) -> torch.Tensor:
 def soft_dice_loss(
     probability: torch.Tensor,
     labels: torch.Tensor,
+    valid_mask: Optional[torch.Tensor] = None,
     eps: float = 1e-6,
 ) -> torch.Tensor:
     """Class-averaged soft Dice loss used in the supervised objective."""
     target = _one_hot(labels, probability.shape[1]).to(
         device=probability.device, dtype=probability.dtype
     )
+    if valid_mask is not None:
+        mask = valid_mask.to(device=probability.device, dtype=probability.dtype)
+        while mask.ndim < probability.ndim:
+            mask = mask.unsqueeze(1)
+        mask = torch.broadcast_to(mask, probability.shape)
+        probability = probability * mask
+        target = target * mask
     dims = (0, 2, 3)
     intersection = (probability * target).sum(dim=dims)
     denominator = probability.sum(dim=dims) + target.sum(dim=dims)
@@ -102,7 +110,7 @@ def teer_supervised_loss(
         raise ValueError("kl_weight must be non-negative")
     alpha, probability, uncertainty = dirichlet_statistics(evidence)
     exempted = target_exempted_alpha(alpha, labels)
-    dice = soft_dice_loss(probability, labels)
+    dice = soft_dice_loss(probability, labels, valid_mask=valid_mask)
     nll = evidential_nll(alpha, labels, valid_mask)
     kl = _masked_mean(dirichlet_kl_to_uniform(exempted), valid_mask)
     edl = nll + float(kl_weight) * kl

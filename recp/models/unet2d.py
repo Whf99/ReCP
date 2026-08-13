@@ -1,7 +1,7 @@
-"""Compact 2D U-Net used only to expose the public backbone contract.
+"""Compact 2D U-Net implementing the ReCP model-output contract.
 
-This inspection model is not the parameter-matched experimental network reported
-in the manuscript and must not be used to reproduce its parameter/FLOP results.
+This compact model is intended for integration checks. It is not the
+parameter-matched network used for the parameter/FLOP results in the paper.
 """
 
 import torch
@@ -26,7 +26,7 @@ class ConvBlock(nn.Module):
 
 
 class UNet2D(nn.Module):
-    """Return non-negative evidence and a feature map through the public model API."""
+    """Return non-negative class evidence and a decoder feature map."""
 
     def __init__(self, in_channels: int = 1, num_classes: int = 2, base: int = 16) -> None:
         super().__init__()

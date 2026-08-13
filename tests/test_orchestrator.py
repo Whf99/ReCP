@@ -7,7 +7,7 @@ from recp.methods.contracts import UGTOutput
 from recp.training import LossWeights, recp_step
 
 
-class _SyntheticModel(nn.Module):
+class _ContractModel(nn.Module):
     def forward(self, image: torch.Tensor) -> dict[str, torch.Tensor]:
         batch, _, height, width = image.shape
         evidence = torch.full((batch, 2, height, width), 2.0)
@@ -15,7 +15,7 @@ class _SyntheticModel(nn.Module):
         return {"evidence": evidence, "features": features}
 
 
-class _SyntheticUGT:
+class _ContractUGT:
     def __init__(self) -> None:
         self.teacher_alpha: torch.Tensor | None = None
         self.student_alpha: torch.Tensor | None = None
@@ -26,10 +26,21 @@ class _SyntheticUGT:
         teacher_features: torch.Tensor,
         text_prototypes: torch.Tensor,
         valid_mask: torch.Tensor,
+        *,
+        detach_target: bool = True,
     ) -> UGTOutput:
+        del teacher_features, text_prototypes, detach_target
         self.teacher_alpha = teacher_alpha
         reliability = torch.ones_like(valid_mask)
-        return UGTOutput(teacher_alpha, teacher_alpha.reciprocal(), reliability, valid_mask)
+        probability = teacher_alpha / teacher_alpha.sum(dim=1, keepdim=True)
+        return UGTOutput(
+            posterior_alpha=teacher_alpha,
+            posterior_probability=probability,
+            image_probability=probability,
+            visual_uncertainty=teacher_alpha.reciprocal().mean(dim=1, keepdim=True),
+            reliability=reliability,
+            valid_mask=valid_mask,
+        )
 
     def consistency_loss(
         self,
@@ -42,8 +53,8 @@ class _SyntheticUGT:
 
 class OrchestratorTests(unittest.TestCase):
     def test_ugt_receives_alpha_not_raw_evidence(self) -> None:
-        model = _SyntheticModel()
-        ugt = _SyntheticUGT()
+        model = _ContractModel()
+        ugt = _ContractUGT()
         image = torch.zeros(1, 1, 4, 4)
         labeled = {"image": image, "mask": torch.zeros(1, 1, 4, 4)}
         unlabeled = {
@@ -53,7 +64,12 @@ class OrchestratorTests(unittest.TestCase):
             "valid_mask": torch.ones(1, 1, 4, 4),
         }
 
-        def teer(evidence: torch.Tensor, labels: torch.Tensor) -> dict[str, torch.Tensor]:
+        def teer(
+            evidence: torch.Tensor,
+            labels: torch.Tensor,
+            valid_mask: torch.Tensor | None = None,
+        ) -> dict[str, torch.Tensor]:
+            del labels, valid_mask
             return {"loss": evidence.mean() * 0.0}
 
         def align(
@@ -63,7 +79,12 @@ class OrchestratorTests(unittest.TestCase):
         ) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
             return output, valid_mask
 
-        def bfcl(features: torch.Tensor, target: UGTOutput) -> torch.Tensor:
+        def bfcl(
+            features: torch.Tensor,
+            target: UGTOutput,
+            valid_mask: torch.Tensor,
+        ) -> torch.Tensor:
+            del target, valid_mask
             return features.mean() * 0.0
 
         recp_step(

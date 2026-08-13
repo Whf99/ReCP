@@ -12,8 +12,8 @@ class ScheduleAndMetricTests(unittest.TestCase):
         self.assertEqual(weights.ugt, 0.0)
         self.assertEqual(weights.bfcl, 0.0)
 
-    def test_peak_weights_match_manuscript_defaults(self) -> None:
-        weights = recp_loss_weights(300, 15, 300, 1.0, 0.3)
+    def test_peak_weights_match_default_configuration(self) -> None:
+        weights = recp_loss_weights(299, 15, 300, 1.0, 0.3)
         self.assertAlmostEqual(weights.ugt, 1.0)
         self.assertAlmostEqual(weights.bfcl, 0.3)
 
