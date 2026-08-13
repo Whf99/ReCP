@@ -89,9 +89,3 @@ files, and cross-view alignment code are not part of this review release.
 
 The public/restricted boundary is stated above and enforced by explicit restricted
 interfaces in `recp/methods/contracts.py`.
-
-## Source provenance
-
-The files in this repository were independently written from the equations and
-algorithm description in the ReCP manuscript. No source file from an external
-segmentation repository is distributed in this package.
