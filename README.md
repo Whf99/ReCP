@@ -26,10 +26,6 @@ contracts. Data loading, split handling, and preprocessing are decoupled through
 an experiment factory so that no clinical paths, split files, or institutional
 metadata are embedded in the training entry point.
 
-The compact U-Net is intended for integration checks. It is not the
-parameter-matched experimental network used for the parameter count, FLOPs,
-latency, or accuracy reported in the paper.
-
 ## Installation
 
 Python 3.10 or newer is recommended.
