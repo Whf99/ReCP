@@ -26,6 +26,17 @@ contracts. Data loading, split handling, and preprocessing are decoupled through
 an experiment factory so that no clinical paths, split files, or institutional
 metadata are embedded in the training entry point.
 
+## Qualitative comparisons
+
+### Qualitative results on the NPC dataset
+
+![NPC qualitative comparison](Figures/NPC.png)
+
+### Qualitative results on the SegRap2023 dataset
+
+![SegRap2023 dataset qualitative comparison](Figures/SegRap2023.png)
+
+
 ## Installation
 
 Python 3.10 or newer is recommended.
